@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Quản Lý Sản Xuất Toàn Diện</title>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <style>
+        :root{
+            --bg-1:#0b1220;
+            --bg-2:#111a2e;
+            --surface:rgba(255,255,255,0.04);
+            --surface-2:rgba(255,255,255,0.07);
+            --border:rgba(255,255,255,0.08);
+            --text:#e6ecff;
+            --text-dim:#9aa4bf;
+            --primary:#3b82f6;
+            --primary-2:#60a5fa;
+            --accent:#22d3ee;
+            --success:#10b981;
+            --warning:#f59e0b;
+            --danger:#ef4444;
+            --shadow-lg:0 20px 50px rgba(0,0,0,.45);
+            --shadow-sm:0 4px 14px rgba(0,0,0,.25);
+        }
+        *{box-sizing:border-box}
+        body{
+            font-family:'Inter','Segoe UI',system-ui,sans-serif;
+            margin:0;padding:14px;height:100vh;overflow:hidden;
+            color:var(--text);
+            background:
+                radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,.18), transparent 60%),
+                radial-gradient(1000px 500px at 110% 110%, rgba(34,211,238,.14), transparent 60%),
+                linear-gradient(160deg,var(--bg-1),var(--bg-2));
+            -webkit-font-smoothing:antialiased;
+        }
+        .dashboard-container{width:100%;height:100%;display:flex;flex-direction:column;gap:12px}
+
+        .btn-open-data{
+            position:absolute;top:18px;right:24px;z-index:100;
+            background:linear-gradient(135deg,var(--primary),var(--accent));
+            color:#fff;padding:9px 16px;border:none;border-radius:10px;
+            font-size:13px;font-weight:600;letter-spacing:.2px;cursor:pointer;
+            box-shadow:0 8px 24px rgba(59,130,246,.35), inset 0 1px 0 rgba(255,255,255,.25);
+            transition:transform .15s ease, box-shadow .15s ease;
+        }
+        .btn-open-data:hover{transform:none;box-shadow:0 8px 24px rgba(59,130,246,.35)}
+
+        /* MODAL */
+        .modal-overlay{position:fixed;inset:0;background:rgba(5,10,22,.7);z-index:1000;display:none;justify-content:center;align-items:center}
+        .modal-content{
+            background:linear-gradient(180deg,#141d33,#0e1626);
+            color:var(--text);
+            width:880px;max-height:95vh;overflow-y:auto;
+            border-radius:16px;padding:24px;
+            border:1px solid var(--border);
+            box-shadow:var(--shadow-lg);
+            display:flex;flex-direction:column;gap:14px;
+        }
+        .modal-content::-webkit-scrollbar{width:8px}
+        .modal-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:8px}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px}
+        .modal-header h2{margin:0;font-size:18px;font-weight:600;color:#fff;letter-spacing:.2px}
+        .section-title{
+            background:linear-gradient(90deg,rgba(59,130,246,.18),rgba(34,211,238,.08));
+            border:1px solid rgba(59,130,246,.25);
+            padding:9px 14px;border-radius:10px;font-weight:600;color:#cfe2ff;margin-top:4px;font-size:13px;letter-spacing:.3px;
+        }
+        .form-group{display:flex;flex-direction:column;gap:6px}
+        .form-group label{font-weight:600;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px}
+        .form-group select,.form-group input,.form-group textarea{
+            padding:9px 11px;border:1px solid var(--border);border-radius:9px;
+            font-family:inherit;font-size:13px;width:100%;
+            background:rgba(255,255,255,.04);color:var(--text);
+            transition:border-color .15s, box-shadow .15s;
+        }
+        .form-group select:focus,.form-group input:focus,.form-group textarea:focus{
+            outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.2);
+        }
+        .form-group textarea{min-height:60px;resize:vertical}
+        .form-row{display:flex;gap:10px}
+        .form-row .form-group{flex:1}
+        .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px}
+        .btn-close,.btn-save,.btn-add,.btn-delete,.btn-sync{
+            padding:9px 16px;border:none;border-radius:9px;cursor:pointer;font-weight:600;font-size:13px;
+            transition:transform .12s ease, box-shadow .12s ease, filter .12s;
+        }
+        .btn-close:hover,.btn-save:hover,.btn-add:hover,.btn-delete:hover,.btn-sync:hover{transform:none;filter:brightness(1.08)}
+        .btn-close{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}
+        .btn-save{background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 6px 16px rgba(16,185,129,.35)}
+        .btn-add{background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;height:36px;align-self:flex-end;box-shadow:0 6px 16px rgba(245,158,11,.3)}
+        .btn-delete{background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;width:100%;height:36px;box-shadow:0 6px 16px rgba(239,68,68,.3)}
+        .btn-sync{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;box-shadow:0 6px 16px rgba(124,58,237,.35)}
+        input[type="file"]{padding:6px;background:rgba(255,255,255,.04);color:var(--text);cursor:pointer;border-radius:8px;border:1px solid var(--border)}
+
+        /* Glass card base */
+        .oee-slider-viewport,.color-band-viewport,.slider-viewport{
+            background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
+            border:1px solid var(--border);
+            border-radius:16px;
+            box-shadow:var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,.04);
+            width:100%;overflow:hidden;position:relative;
+            backdrop-filter:none;
+        }
+
+        /* OEE SECTION */
+        .oee-slider-viewport{height:28%}
+        .oee-slider-track{display:flex;height:100%;transition:transform 1.2s cubic-bezier(0.22,1,0.36,1);will-change:transform}
+        .oee-slide{height:100%;position:relative;display:flex;flex-direction:column;justify-content:center;padding:18px 22px;box-sizing:border-box}
+        .line-title{
+            position:absolute;top:12px;left:22px;font-size:13px;font-weight:600;color:#fff;
+            background:linear-gradient(135deg,var(--primary),var(--accent));
+            padding:5px 12px;border-radius:999px;z-index:10;letter-spacing:.4px;
+            box-shadow:0 6px 16px rgba(59,130,246,.4);
+        }
+        .oee-content-wrapper{display:flex;width:100%;height:calc(100% - 28px);margin-top:28px;align-items:center;justify-content:space-between;gap:16px}
+        .oee-image-box{
+            flex:0 0 18%;height:100%;
+            background:rgba(255,255,255,.03);
+            border-radius:12px;border:1px solid var(--border);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;box-sizing:border-box;
+        }
+        .oee-image-box img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
+        .oee-image-title{display:none}
+        .oee-charts-container{flex:1;display:flex;justify-content:space-between;align-items:center;height:100%}
+        .oee-card{
+            width:19%;height:100%;
+            background:rgba(255,255,255,.025);
+            border:1px solid var(--border);
+            border-radius:12px;
+            transition:transform .2s ease, box-shadow .2s ease;
+        }
+        .oee-card:hover{transform:none;box-shadow:none}
+
+        /* COLOR BAND */
+        .color-band-viewport{height:8%;background:linear-gradient(180deg,#0a1020,#0d1426)}
+        .color-band-track{display:flex;height:100%;transition:transform 1.2s cubic-bezier(0.22,1,0.36,1);will-change:transform}
+        .band-slide{height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;position:relative}
+        .band-title{
+            position:absolute;top:6px;left:16px;color:#fff;font-size:12px;font-weight:600;z-index:10;letter-spacing:.4px;
+            background:rgba(255,255,255,.06);padding:2px 9px;border-radius:6px;border:1px solid var(--border);
+        }
+        .band-chart-area{flex:1;width:100%;margin-top:6px}
+        .legend-box{position:absolute;top:7px;right:16px;display:flex;gap:12px;font-size:11px;color:#cbd5e1;z-index:10}
+        .legend-item{display:flex;align-items:center;gap:5px}
+        .dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 8px currentColor}
+
+        .apexcharts-tooltip{color:#000;box-shadow:0 8px 24px rgba(0,0,0,.5)!important;border:none!important;border-radius:8px!important}
+        .apexcharts-xaxis text,.apexcharts-yaxis text{fill:#94a3b8!important;font-size:12px!important;font-weight:600!important}
+        .apexcharts-text tspan{fill:#cbd5e1}
+        .apexcharts-radialbar-track path{stroke:rgba(255,255,255,.08)!important}
+        .apexcharts-datalabel-label,.apexcharts-datalabel-value{fill:#e6ecff!important}
+        .apexcharts-title-text{fill:#cbd5e1!important}
+        .apexcharts-legend-text{color:#cbd5e1!important}
+
+        /* DEFECTS */
+        .slider-viewport{height:61%}
+        .slider-track{display:flex;height:100%;transition:transform 1.2s cubic-bezier(0.22,1,0.36,1);will-change:transform}
+        .slide{height:100%;padding:14px 22px;box-sizing:border-box;display:flex;flex-direction:column}
+        .slide-header{
+            flex:none;font-size:15px;color:#fff;margin:0 0 12px 0;padding-bottom:10px;font-weight:600;
+            border-bottom:1px solid var(--border);display:flex;align-items:center;
+        }
+        .line-badge{
+            background:linear-gradient(135deg,var(--primary),var(--accent));
+            color:#fff;padding:4px 12px;border-radius:999px;font-size:12px;margin-right:12px;font-weight:600;letter-spacing:.3px;
+            box-shadow:0 4px 12px rgba(59,130,246,.35);
+        }
+        .slide-content{flex:1;display:grid;grid-template-columns:32% 1fr;grid-template-rows:1fr;gap:10px;min-height:0}
+        .top-row{display:contents}
+        .bottom-row{display:contents}
+        .defect-image-box{
+            grid-row:1 / span 2;grid-column:1;
+            background:rgba(255,255,255,.03);
+            border-radius:12px;border:1px solid var(--border);
+            display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;box-sizing:border-box;overflow:hidden;
+        }
+        .defect-image-title{font-size:10px;font-weight:700;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border);padding-bottom:5px;width:100%;text-align:center}
+        .defect-image-box img{max-width:100%;max-height:calc(100% - 22px);object-fit:contain;border-radius:8px}
+        .chart-box{
+            background:rgba(255,255,255,.025);
+            border-radius:12px;border:1px solid var(--border);
+            padding:4px 6px;box-sizing:border-box;
+            transition:border-color .2s;
+            min-height:0;display:flex;flex-direction:column;
+        }
+        .chart-box:hover{border-color:rgba(59,130,246,.35)}
+        .chart-box-main{display:none}
+        .chart-box-sub{grid-row:1;grid-column:2;min-width:0}
+        .chart-box-hour{display:none}
+        .chart-core{flex:1;width:100%;min-height:0}
+
+
+        /* ===== ADDED: header, theme toggle, full-fill images ===== */
+        .app-header{
+            flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+            gap:16px;padding:10px 18px;border-radius:14px;
+            background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02));
+            border:1px solid var(--border);
+            box-shadow:var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,.05);
+            backdrop-filter:none;
+        }
+        .app-header .brand{display:flex;align-items:center;gap:14px;min-width:0}
+        .app-header .brand img{
+            height:42px;width:auto;object-fit:contain;
+            background:#fff;padding:5px 10px;border-radius:10px;
+            box-shadow:0 4px 12px rgba(0,0,0,.25);
+        }
+        .app-header .brand .titles{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+        .app-header .brand .titles .t1{font-size:15px;font-weight:700;color:#fff;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .app-header .brand .titles .t2{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.2px}
+        .app-header .header-actions{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+        .btn-theme{
+            background:rgba(255,255,255,.06);color:var(--text);
+            border:1px solid var(--border);border-radius:10px;
+            padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;
+            display:inline-flex;align-items:center;gap:8px;
+            transition:transform .15s, box-shadow .15s, background .15s;
+        }
+        .btn-theme:hover{transform:none;background:rgba(255,255,255,.1);box-shadow:none}
+        /* Make Quản Lý button inline in header instead of absolute */
+        .app-header .btn-open-data{position:static;top:auto;right:auto}
+
+        /* Override layout: container is flex column; sections grow */
+        .dashboard-container{gap:10px}
+        .oee-slider-viewport{height:auto;flex:28 1 0}
+        .color-band-viewport{height:auto;flex:8 1 0}
+        .slider-viewport{height:auto;flex:61 1 0}
+
+        /* Images fill boxes */
+        .oee-image-box, .defect-image-box{padding:6px}
+        .defect-image-box img{
+            width:100%;height:100%;max-width:100%;max-height:100%;
+            object-fit:cover;border-radius:8px;display:block;
+        }
+        .oee-image-box img{
+            width:100%;height:100%;max-width:100%;max-height:100%;
+            object-fit:contain;border-radius:8px;display:block;
+        }
+        .oee-image-title, .defect-image-title{flex:0 0 auto}
+        .oee-image-box, .defect-image-box{display:flex;flex-direction:column}
+        .oee-image-box > img, .defect-image-box > img{flex:1;min-height:0}
+
+        /* ===== LIGHT THEME ===== */
+        body.theme-light{
+            color:#1f2937;
+            background:
+                radial-gradient(1200px 600px at 10% -10%, rgba(59,130,246,.12), transparent 60%),
+                radial-gradient(1000px 500px at 110% 110%, rgba(34,211,238,.10), transparent 60%),
+                linear-gradient(160deg,#f1f5fb,#e7eef9);
+        }
+        body.theme-light{
+            --surface:rgba(255,255,255,.85);
+            --surface-2:rgba(255,255,255,.95);
+            --border:rgba(15,23,42,.10);
+            --text:#1f2937;
+            --text-dim:#5b6577;
+            --shadow-lg:0 14px 32px rgba(15,23,42,.10);
+            --shadow-sm:0 4px 12px rgba(15,23,42,.07);
+        }
+        body.theme-light .oee-slider-viewport,
+        body.theme-light .color-band-viewport,
+        body.theme-light .slider-viewport,
+        body.theme-light .app-header{
+            background:linear-gradient(180deg,#ffffff,#f7f9fd);
+            border-color:var(--border);
+        }
+        body.theme-light .color-band-viewport{background:linear-gradient(180deg,#f7f9fd,#eef2f8)}
+        body.theme-light .oee-image-box,
+        body.theme-light .defect-image-box,
+        body.theme-light .oee-card,
+        body.theme-light .chart-box{
+            background:#ffffff;border-color:var(--border);
+        }
+        body.theme-light .modal-content{
+            background:linear-gradient(180deg,#ffffff,#f5f8fd);color:#1f2937;
+        }
+        body.theme-light .modal-overlay{background:rgba(15,23,42,.45)}
+        body.theme-light .modal-header h2{color:#0f172a}
+        body.theme-light .form-group select,
+        body.theme-light .form-group input,
+        body.theme-light .form-group textarea,
+        body.theme-light input[type="file"]{
+            background:#ffffff;color:#1f2937;border-color:var(--border);
+        }
+        body.theme-light .btn-close{background:#eef2f8;color:#1f2937;border-color:var(--border)}
+        body.theme-light .slide-header{color:#0f172a}
+        body.theme-light .band-title{background:rgba(15,23,42,.06);color:#1f2937}
+        body.theme-light .legend-box{color:#475569}
+        body.theme-light .app-header .brand .titles .t1{color:#0f172a}
+        body.theme-light .btn-theme{background:#ffffff;color:#1f2937}
+        body.theme-light .apexcharts-xaxis text,
+        body.theme-light .apexcharts-yaxis text{fill:#475569!important}
+        body.theme-light .apexcharts-text tspan,
+        body.theme-light .apexcharts-datalabel-label,
+        body.theme-light .apexcharts-datalabel-value,
+        body.theme-light .apexcharts-title-text,
+        body.theme-light .apexcharts-legend-text{fill:#1f2937!important;color:#1f2937!important}
+        body.theme-light .apexcharts-radialbar-track path{stroke:rgba(15,23,42,.08)!important}
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <header class="app-header">
+            <div class="brand">
+                <img src="https://i.postimg.cc/3wbD4Pcr/Fujikura-Conec-Vietnam-Company-Limited-(Xoa-phong).jpg">
+                <div class="titles">
+                    
+                    <span class="t2" style="font-weight: 900; font-size:18px;-webkit-text-stroke:0.8px currentColor; ">Fujikura Conec Vietnam Company Limited</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn-theme" onclick="toggleTheme()" id="btnTheme" title="Đổi giao diện">
+                    <span id="themeIcon">☀️</span><span id="themeLabel">Sáng</span>
+                </button>
+                <span id="cloudStatus" title="Trạng thái đồng bộ Cloud" style="font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid var(--border);cursor:default;">⏳ Đang tải...</span>
+                <button class="btn-theme" onclick="manualSyncCloud()" title="Đồng bộ thủ công từ Cloud về máy này" style="background:rgba(124,58,237,0.15);border-color:rgba(124,58,237,0.4);">
+                    🔄 Đồng bộ
+                </button>
+                <button class="btn-open-data" onclick="openModal()">⚙️ Quản Lý Dashboard</button>
+            </div>
+        </header>
+
+
+    <div class="modal-overlay" id="dataModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Cấu Hình Hệ Thống Sản Xuất</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-sync" onclick="exportData()">⬇️ Xuất File Backup</button>
+                    <label class="btn-sync" style="cursor: pointer;">⬆️ Nhập File Backup<input type="file" style="display: none;" accept=".json" onchange="importData(event)"></label>
+                </div>
+            </div>
+            
+            <div class="section-title">⚡ 1. Nhập Nhanh Ngày Hôm Nay</div>
+            <div style="background: rgba(16,185,129,0.07); border: 1px solid rgba(16,185,129,0.25); border-radius:10px; padding:14px; margin-bottom:6px;">
+                <div style="font-size:12px; color:#9aa4bf; margin-bottom:10px;">
+                    Chỉ nhập số của <strong style="color:#10b981">ngày hôm nay</strong> — hệ thống tự đẩy vào cuối, xóa ngày cũ nhất. Không cần nhập lại 10 ngày.
+                </div>
+                <div class="form-row" style="align-items:flex-end; flex-wrap:wrap; gap:10px;">
+                    <div class="form-group" style="min-width:130px;">
+                        <label>Chọn Line</label>
+                        <select id="quickLine" onchange="loadQuickDefects()"></select>
+                    </div>
+                    <div class="form-group" style="min-width:160px;">
+                        <label>Chọn Lỗi / Sản Lượng</label>
+                        <select id="quickMetric"></select>
+                    </div>
+                </div>
+                <div class="form-row" style="align-items:flex-end; flex-wrap:wrap; gap:10px; margin-top:4px;">
+                    <div class="form-group" style="min-width:130px;" id="quickDayGroup">
+                        <label id="quickDayLabel">Số hôm nay (Ca Ngày)</label>
+                        <input type="number" id="quickDayVal" min="0" placeholder="0" style="font-size:20px; font-weight:700; color:#10b981; text-align:center;">
+                    </div>
+                    <div class="form-group" style="min-width:130px;" id="quickNightGroup">
+                        <label>Số hôm nay (Ca Đêm)</label>
+                        <input type="number" id="quickNightVal" min="0" placeholder="0" style="font-size:20px; font-weight:700; color:#818cf8; text-align:center;">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px; padding-bottom:4px;">
+                        <button class="btn-save" style="padding:10px 20px; background:linear-gradient(135deg,#059669,#10b981);" onclick="pushTodayData()">
+                            ➕ Đẩy vào & Lưu
+                        </button>
+                        <div id="quickPreview" style="font-size:11px; color:#9aa4bf; text-align:center; min-height:16px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">✏️ 2. Sửa Ngày Cụ Thể</div>
+            <div style="background: rgba(129,140,248,0.07); border: 1px solid rgba(129,140,248,0.25); border-radius:10px; padding:14px; margin-bottom:6px;">
+                <div style="font-size:12px; color:#9aa4bf; margin-bottom:10px;">
+                    Chọn Line và chỉ số cần sửa — bảng 10 ngày hiện ra, sửa ô nào thì lưu ô đó.
+                </div>
+                <div class="form-row" style="align-items:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                    <div class="form-group" style="min-width:130px;">
+                        <label>Chọn Line</label>
+                        <select id="editLine" onchange="loadEditDefects()"></select>
+                    </div>
+                    <div class="form-group" style="min-width:160px;">
+                        <label>Chọn Lỗi / Sản Lượng</label>
+                        <select id="editMetric" onchange="renderEditGrid()"></select>
+                    </div>
+                </div>
+                <div id="editDayGrid" style="overflow-x:auto;"></div>
+                <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+                    <button class="btn-save" style="padding:9px 22px; background:linear-gradient(135deg,#4f46e5,#818cf8);" onclick="saveEditGrid()">
+                        💾 Lưu Chỉnh Sửa
+                    </button>
+                </div>
+            </div>
+
+            <div class="section-title">📊 3. Chỉnh Sửa Toàn Bộ Số Liệu</div>
+            <div class="form-row">
+                <div class="form-group"><label>Chọn Line</label><select id="selLine" onchange="updateMetricDropdown()"></select></div>
+                <div class="form-group"><label>Chọn Chỉ Số / Lỗi</label><select id="selMetric" onchange="loadInputValues()"></select></div>
+            </div>
+
+            <div class="form-group" id="inputImageContainer" style="display: none; margin-top: 5px; background: #e3f2fd; padding: 10px; border-radius: 6px;">
+                <label id="lblImageTitle" style="color: #1976d2; font-weight: bold;">Ảnh Minh Họa</label>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                    <input type="text" id="imgbbApiKey" placeholder="🔑 ImgBB API Key (nhập 1 lần, tự nhớ)..."
+                        style="flex:1; font-size:12px; background:#fff3e0; border:1px solid #f57c00; padding:6px 8px; border-radius:6px;"
+                        oninput="localStorage.setItem('imgbbApiKey', this.value.trim())">
+                    <a href="https://api.imgbb.com/" target="_blank" style="font-size:11px; color:#1565c0; white-space:nowrap; text-decoration:underline;">Lấy API Key miễn phí ↗</a>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
+                    <label style="background:linear-gradient(135deg,#1976d2,#42a5f5); color:#fff; padding:7px 16px; border-radius:6px; cursor:pointer; font-size:13px; white-space:nowrap; font-weight:600;">
+                        📁 Chọn ảnh từ máy
+                        <input type="file" id="fileImgUpload" accept="image/png,image/jpeg,image/jpg,image/webp" style="display:none;" onchange="handleImageUpload(event)">
+                    </label>
+                    <div id="imgUploadStatus" style="font-size:12px; color:#555; flex:1;"></div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="valImgUrl" placeholder="Link tự điền sau upload, hoặc dán thủ công..." style="flex:1;" oninput="previewImg(this.value)">
+                    <button onclick="previewImg(document.getElementById('valImgUrl').value)" style="padding:6px 12px; background:#546e7a; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:12px;">👁 Xem</button>
+                </div>
+                <div id="imgPreviewBox" style="display:none; margin-top:8px; text-align:center;">
+                    <img id="imgPreviewEl" src="" alt="preview" style="max-height:150px; max-width:100%; border-radius:8px; border:2px solid #42a5f5; object-fit:contain;">
+                    <div id="imgPreviewMsg" style="font-size:11px; color:#1976d2; margin-top:4px;"></div>
+                </div>
+            </div>
+
+            <div id="inputAreaOEE" style="display: block; margin-top: 10px;">
+                <div class="form-row">
+                    <div class="form-group"><label style="color: #d32f2f;">OP Ratio (%)</label><input type="number" id="valOpRatio" step="0.01"></div>
+                    <div class="form-group"><label>OEE (%)</label><input type="number" id="valOEE" step="0.01"></div>
+                    <div class="form-group"><label>Avail (%)</label><input type="number" id="valAvail" step="0.01"></div>
+                    <div class="form-group"><label>Perf (%)</label><input type="number" id="valPerf" step="0.01"></div>
+                    <div class="form-group"><label>Qual (%)</label><input type="number" id="valQual" step="0.01"></div>
+                </div>
+            </div>
+
+            <div id="inputAreaSeries" style="display: none; margin-top: 10px;">
+                <div class="form-group"><label>Dữ liệu 12 Tháng</label><textarea id="valMonth" placeholder="Dán chuỗi số cách nhau bởi dấu phẩy..."></textarea></div>
+                <div class="form-row">
+                    <div class="form-group" id="groupDayShift"><label>10 Ngày gần nhất (Ca Ngày)</label><textarea id="valDayShift" placeholder="Dán 10 số (cũ → mới)..."></textarea></div>
+                    <div class="form-group" id="groupNightShift"><label>10 Ngày gần nhất (Ca Đêm)</label><textarea id="valNightShift" placeholder="Dán 10 số (cũ → mới)..."></textarea></div>
+                </div>
+                <div class="form-group"><label>Dữ liệu 24 Giờ</label><textarea id="valHour" placeholder="Dán 24 số..."></textarea></div>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 5px; padding-top: 0; border:none;">
+                <button class="btn-save" onclick="saveData()">💾 Lưu Dữ Liệu</button>
+            </div>
+
+            <div class="section-title">🛠 4. Quản Lý Cấu Trúc (Thêm & Xóa)</div>
+            <div class="form-row">
+                <div class="form-group"><label>Thêm Line Mới</label><input type="text" id="newLineName" placeholder="Tên Line"></div>
+                <button class="btn-add" onclick="addNewLine()">+ Thêm Line</button>
+            </div>
+            <div class="form-row" style="margin-top: 5px;">
+                <div class="form-group"><label>Chọn Line Cần Thêm Lỗi</label><select id="selLineAddDefect"></select></div>
+                <div class="form-group"><label>Thêm Lỗi Mới</label><input type="text" id="newDefectName" placeholder="Tên Lỗi"></div>
+                <button class="btn-add" style="background: #1976d2;" onclick="addNewDefect()">+ Thêm Lỗi</button>
+            </div>
+            <div class="form-row" style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                <div class="form-group"><button class="btn-delete" onclick="deleteCurrentLine()">🗑 Xóa Line Này</button></div>
+                <div class="form-group"><button class="btn-delete" onclick="deleteCurrentDefect()">🗑 Xóa Lỗi Này</button></div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-close" style="margin-right: auto; background: #ffebee; color: #c62828;" onclick="resetAllData()">⚠ Khôi Phục Gốc</button>
+                <button class="btn-close" onclick="closeModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    
+        <div class="oee-slider-viewport"><div class="oee-slider-track" id="oeeSliderTrack"></div></div>
+        
+        <div class="color-band-viewport">
+            <div class="legend-box">
+                <div class="legend-item"><div class="dot" style="background: #795548;"></div>No Plan</div>
+                <div class="legend-item"><div class="dot" style="background: #FFD700;"></div>ALARM</div>
+                <div class="legend-item"><div class="dot" style="background: #00E396;"></div>RUN</div>
+                <div class="legend-item"><div class="dot" style="background: #E91E63;"></div>STOP</div>
+            </div>
+            <div class="color-band-track" id="colorBandTrack"></div>
+        </div>
+
+        <div class="slider-viewport"><div class="slider-track" id="sliderTrack"></div></div>
+    </div>
+
+    <script>
+        const months = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+        const days = Array.from({length: 30}, (_, i) => `${i+1}`);
+        // 10 ngày gần nhất tính từ hôm nay trở về trước (định dạng DD/MM)
+        const last10Days = (() => {
+            const arr = []; const today = new Date();
+            for (let i = 9; i >= 0; i--) {
+                const d = new Date(today); d.setDate(today.getDate() - i);
+                arr.push(`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`);
+            }
+            return arr;
+        })();
+        const last10 = (a) => Array.isArray(a) ? a.slice(-10) : a;
+        const hours = Array.from({length: 24}, (_, i) => `${i}h`);
+        const generateData = (length, base) => Array.from({length}, () => Math.max(0, base + Math.floor(Math.random() * 6 - 3)));
+        const generateProdData = (length, base) => Array.from({length}, () => base + Math.floor(Math.random() * 10000)); 
+        const getRandomColor = () => '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+
+        const defaultLinesData = [
+            {
+                name: "DFAB-R", oeeColor: "#00b050", stats: [0.00, 94.42, 100.00, 94.42, 100.00], lineImg: "",
+                prodM: generateProdData(12, 50000), prodD: generateProdData(10, 45000), prodH: Array(24).fill(0),
+                defects: [{ name: "Fiber NG", color: "#1976d2", img: "", dataM: generateData(12, 15), dataD_Day: generateData(10, 4), dataD_Night: generateData(10, 1), dataH: generateData(24, 15) }]
+            },
+            {
+                name: "DFAB-P", oeeColor: "#f39c12", stats: [0.00, 89.15, 95.50, 91.20, 98.80], lineImg: "",
+                prodM: generateProdData(12, 45000), prodD: generateProdData(10, 40000), prodH: Array(24).fill(0),
+                defects: [{ name: "Block dent", color: "#f57c00", img: "", dataM: generateData(12, 18), dataD_Day: generateData(10, 10), dataD_Night: generateData(10, 8), dataH: generateData(24, 18) }]
+            }
+        ];
+
+        // ==========================================
+        // ==========================================
+        // GOOGLE SHEETS SYNC LAYER — Nguồn đồng bộ chính
+        // Dữ liệu cấu hình (Line, Lỗi, số liệu nhập tay) lưu vào cột H của Sheet
+        // ==========================================
+        const webAppUrl = "https://script.google.com/macros/s/AKfycbxSKzaP9pQ2OY_WVys6MbN0bitIvOKs0SurmgeOdD38nZhUCQBBlzkAdb9MQgnEapgS2A/exec";
+
+        // Lưu toàn bộ cấu hình lên Google Sheets (cột H) — dùng POST để không giới hạn kích thước
+        // VER8-FINAL: Chia JSON thành chunk 2000 ký tự, gửi nhiều GET request ngắn
+        // Apps Script ghép lại và lưu H1 khi nhận đủ tất cả chunk
+        async function sheetSaveConfig(data) {
+            if (!webAppUrl.trim()) return false;
+            try {
+                const dataNoImg = JSON.parse(JSON.stringify(data));
+                dataNoImg.forEach(line => {
+                    // Chỉ xóa base64 (quá lớn), giữ URL ImgBB/http
+                    if (line.lineImg && line.lineImg.startsWith('data:')) line.lineImg = "";
+                    if (line.defects) line.defects.forEach(d => {
+                        if (d.img && d.img.startsWith('data:')) d.img = "";
+                    });
+                });
+                const jsonStr = JSON.stringify(dataNoImg);
+
+                const CHUNK = 2000;
+                const total = Math.ceil(jsonStr.length / CHUNK);
+                const sessionId = Date.now().toString();
+
+                for (let i = 0; i < total; i++) {
+                    const part = jsonStr.slice(i * CHUNK, (i + 1) * CHUNK);
+                    const url = `${webAppUrl}?action=save_chunk&sid=${sessionId}&idx=${i}&total=${total}&data=${encodeURIComponent(part)}&t=${Date.now()}`;
+                    const res = await fetch(url);
+                    const txt = await res.text();
+                    if (!txt.includes("Chunk OK") && !txt.includes("Config Saved")) {
+                        console.warn(`Chunk ${i}/${total} lỗi:`, txt);
+                        return false;
+                    }
+                }
+                return true;
+            } catch(e) {
+                console.warn('sheetSaveConfig failed:', e);
+                return false;
+            }
+        }
+
+        // Đọc full_config từ Google Sheets (cột H)
+        async function sheetReadConfig() {
+            if (!webAppUrl.trim()) return null;
+            try {
+                const res = await fetch(`${webAppUrl}?action=read&t=${Date.now()}`);
+                const data = await res.json();
+                if (data.full_config && typeof data.full_config === 'string' && data.full_config.trim().startsWith('[')) {
+                    return JSON.parse(data.full_config);
+                }
+                return null;
+            } catch(e) {
+                console.warn('sheetReadConfig failed:', e);
+                return null;
+            }
+        }
+
+        // Sẽ được gán sau khi load xong
+        let linesData = [];
+        let timelineData = {};
+
+        const fitTo10 = (arr) => { if(!Array.isArray(arr)) return Array(10).fill(0); if(arr.length===10) return arr; if(arr.length>10) return arr.slice(-10); const pad=Array(10-arr.length).fill(0); return pad.concat(arr); };
+        function normalizeLinesData(data) {
+            data.forEach(line => {
+                if(line.stats.length === 4) line.stats.unshift(0);
+                if(line.lineImg === undefined) line.lineImg = "";
+                if(!line.prodM) line.prodM = Array(12).fill(0);
+                if(!line.prodH) line.prodH = Array(24).fill(0);
+                line.prodD = fitTo10(line.prodD);
+                line.defects.forEach(d => { if (d.dataD && !d.dataD_Day) { d.dataD_Day = d.dataD; d.dataD_Night = Array(10).fill(0); } d.dataD_Day = fitTo10(d.dataD_Day); d.dataD_Night = fitTo10(d.dataD_Night); });
+            });
+            return data;
+        }
+        
+        // -------------------------------------------------------
+        // autoRollDays: tự động rollPush khi sang ngày mới
+        // Nguyên lý: lưu ngày cuối cùng vào localStorage key "dashboardLastDate"
+        // Mỗi lần load: so sánh hôm nay vs lastDate
+        //   → nếu lệch N ngày: rollPush N lần (thêm 0 vào cuối, đẩy ngày cũ ra)
+        //   → cập nhật lastDate = hôm nay
+        // Kết quả: index 9 luôn = hôm nay, nhãn và data luôn khớp
+        // -------------------------------------------------------
+        function autoRollDays(linesDataArr) {
+            const todayStr = (() => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            })();
+
+            const lastDateStr = localStorage.getItem('dashboardLastDate');
+
+            // Tính số ngày lệch
+            let diffDays = 0;
+            if (lastDateStr && lastDateStr !== todayStr) {
+                const last = new Date(lastDateStr);
+                const today = new Date(todayStr);
+                diffDays = Math.round((today - last) / (1000 * 60 * 60 * 24));
+                // Giới hạn tối đa 10 ngày (nếu quá lâu không mở thì reset về 0 hết)
+                diffDays = Math.min(diffDays, 10);
+            }
+
+            if (diffDays > 0) {
+                linesDataArr.forEach(line => {
+                    for (let n = 0; n < diffDays; n++) {
+                        // prodD
+                        if (Array.isArray(line.prodD)) {
+                            line.prodD.shift();
+                            line.prodD.push(0);
+                        }
+                        // mỗi lỗi: dataD_Day, dataD_Night
+                        if (Array.isArray(line.defects)) {
+                            line.defects.forEach(d => {
+                                if (Array.isArray(d.dataD_Day))   { d.dataD_Day.shift();   d.dataD_Day.push(0); }
+                                if (Array.isArray(d.dataD_Night)) { d.dataD_Night.shift();  d.dataD_Night.push(0); }
+                            });
+                        }
+                    }
+                });
+                console.log(`[autoRollDays] Đã roll ${diffDays} ngày (${lastDateStr} → ${todayStr})`);
+            }
+
+            // Luôn cập nhật lastDate = hôm nay
+            localStorage.setItem('dashboardLastDate', todayStr);
+            return linesDataArr;
+        }
+
+        const STATUS_COLORS = { "RUN": "#00E396", "STOP": "#E91E63", "ALARM": "#FFD700", "NOPLAN": "#795548" };
+
+        let sliderInterval = null; let defectMap = []; 
+        const activeCharts = {}; const bandCharts = {};
+
+        function createRadialOptions(label, value, color) {
+            return {
+                series: [value], chart: { type: 'radialBar', height: '100%', parentHeightOffset: 0, sparkline: { enabled: true } },
+                plotOptions: { radialBar: { hollow: { size: '55%' }, track: { background: '#dcdcdc', strokeWidth: '100%' }, dataLabels: { show: true, name: { offsetY: 15, color: '#000', fontSize: '11px', fontWeight: 'bold' }, value: { offsetY: -10, color: '#000', fontSize: '16px', fontWeight: 'bold', formatter: val => val.toFixed(2) + "%" } } } },
+                fill: { colors: [color] }, stroke: { lineCap: 'flat' }, labels: [label]
+            };
+        }
+
+        function createComboChart(title, dataNG, dataProd, categories, colorDefect) {
+            const dataRate = dataNG.map((ng, i) => dataProd[i] > 0 ? (ng / dataProd[i]) * 100 : 0);
+            const multiCategories = categories.map((cat, i) => [cat, dataProd[i] > 0 ? dataProd[i].toLocaleString() : '0']);
+            return {
+                series: [{ name: "SL Lỗi", type: 'column', data: dataNG }, { name: "Tỷ lệ Lỗi", type: 'line', data: dataRate }],
+                chart: { type: 'line', height: '100%', width: '100%', parentHeightOffset: 0, toolbar: { show: false }, animations: { enabled: false } },
+                colors: [colorDefect, '#e53935'],
+                title: { text: title, align: 'left', margin: 4, offsetY: 2, style: { fontSize: '11px', color: '#555' } },
+                plotOptions: { bar: { columnWidth: '55%', borderRadius: 2 } },
+                dataLabels: {
+                    enabled: true,
+                    enabledOnSeries: [1],
+                    offsetY: -6,
+                    style: { fontSize: '8px', colors: ['#e53935'] },
+                    background: { enabled: true, foreColor: '#fff', padding: 2, borderWidth: 0, borderRadius: 2, opacity: 0.85 },
+                    formatter: function (val, opts) {
+                        var realVal = opts.w.globals.series[opts.seriesIndex][opts.dataPointIndex];
+                        if (!realVal || realVal === 0) return '';
+                        if (realVal < 0.01) return realVal.toFixed(4) + '%';
+                        if (realVal < 0.1) return realVal.toFixed(3) + '%';
+                        return realVal.toFixed(2) + '%';
+                    }
+                },
+                stroke: { width: [0, 2], curve: 'smooth' },
+                tooltip: { shared: true, intersect: false },
+                xaxis: {
+                    categories: multiCategories,
+                    labels: { style: { fontSize: '9px', colors: '#888' }, hideOverlappingLabels: true, trim: false },
+                    tickAmount: Math.min(categories.length, 12),
+                    tooltip: { enabled: false }
+                },
+                yaxis: [
+                    { seriesName: 'SL Lỗi', labels: { style: { fontSize: '9px', colors: colorDefect }, formatter: val => Math.round(val) }, title: { text: "NG", style: { fontSize: '9px', color: colorDefect, fontWeight: 600 } } },
+                    { opposite: true, seriesName: 'Tỷ lệ Lỗi', labels: { style: { fontSize: '9px', colors: '#e53935' }, formatter: val => val.toFixed(2) + '%' }, title: { text: "%", style: { fontSize: '9px', color: '#e53935', fontWeight: 600 } } }
+                ],
+                grid: { borderColor: '#e0e0e0', strokeDashArray: 3, padding: { top: 10, right: 8, bottom: 0, left: 5 } },
+                legend: { show: true, position: 'top', horizontalAlign: 'right', offsetY: 0, fontSize: '10px', itemMargin: { horizontal: 6, vertical: 0 }, markers: { width: 8, height: 8 } }
+            };
+        }
+
+        function createDailyComboChart(title, dataDayShift, dataNightShift, dataProd, categories, colorDefect) {
+            const colorNight = '#546E7A'; 
+            const dataRate = dataDayShift.map((dayNG, i) => { const totalNG = dayNG + dataNightShift[i]; return dataProd[i] > 0 ? (totalNG / dataProd[i]) * 100 : 0; });
+            const multiCategories = categories.map((cat, i) => [cat, dataProd[i] > 0 ? dataProd[i].toLocaleString() : '0']);
+            return {
+                series: [{ name: "NG(Ngày)", type: 'column', data: dataDayShift }, { name: "NG(Đêm)", type: 'column', data: dataNightShift }, { name: "Tỷ lệ Lỗi", type: 'line', data: dataRate }],
+                chart: { type: 'line', height: '100%', width: '100%', parentHeightOffset: 0, toolbar: { show: false }, animations: { enabled: false } },
+                colors: [colorDefect, colorNight, '#e53935'],
+                title: { text: title, align: 'left', margin: 4, offsetY: 2, style: { fontSize: '14px', color: '#555' } },
+                plotOptions: { bar: { columnWidth: '60%', borderRadius: 2, dataLabels: { position: 'bottom' } } },
+                dataLabels: {
+                    enabled: true,
+                    enabledOnSeries: [0, 1, 2],
+                    offsetY: 0,
+                    style: { fontSize: '15px', fontWeight: 700, colors: ['#000'] },
+                    background: { enabled: true, foreColor: '#fff', padding: 4, borderWidth: 0, borderRadius: 3, opacity: 0.9 },
+                    formatter: function (val, opts) {
+                        var realVal = opts.w.globals.series[opts.seriesIndex][opts.dataPointIndex];
+                        if (!realVal || realVal === 0) return '';
+                        if (opts.seriesIndex === 2) {
+                            if (realVal < 0.01) return realVal.toFixed(4) + '%';
+                            if (realVal < 0.1) return realVal.toFixed(3) + '%';
+                            return realVal.toFixed(2) + '%';
+                        }
+                        return Math.round(realVal);
+                    }
+                },
+                stroke: { width: [0, 0, 3], curve: 'smooth' },
+                tooltip: { shared: true, intersect: false },
+                xaxis: {
+                    categories: multiCategories,
+                    tickAmount: 15,
+                    labels: {
+                        style: { fontSize: '12px', fontWeight: 600, colors: '#555' },
+                        rotate: 0,
+                        hideOverlappingLabels: true,
+                        trim: false
+                    },
+                    tooltip: { enabled: false }
+                },
+                yaxis: [
+                    { seriesName: 'NG(Ngày)', labels: { style: { fontSize: '12px', colors: colorDefect }, formatter: val => Math.round(val) }, title: { text: "NG", style: { fontSize: '12px', color: colorDefect, fontWeight: 700 } } },
+                    { seriesName: 'NG(Ngày)', show: false },
+                    { opposite: true, seriesName: 'Tỷ lệ Lỗi', labels: { style: { fontSize: '12px', colors: '#e53935' }, formatter: val => val.toFixed(2) + '%' }, title: { text: "%", style: { fontSize: '12px', color: '#e53935', fontWeight: 700 } } }
+                ],
+                grid: { borderColor: '#e0e0e0', strokeDashArray: 3, padding: { top: 20, right: 12, bottom: 0, left: 8 } },
+                legend: { show: true, position: 'top', horizontalAlign: 'right', offsetY: 0, fontSize: '13px', fontWeight: 600, itemMargin: { horizontal: 10, vertical: 0 }, markers: { width: 12, height: 12 } }
+            };
+        }
+
+        function renderDashboard() {
+            const oeeTrack = document.getElementById('oeeSliderTrack');
+            const colorBandTrack = document.getElementById('colorBandTrack');
+            const defectTrack = document.getElementById('sliderTrack');
+            
+            oeeTrack.innerHTML = ''; colorBandTrack.innerHTML = ''; defectTrack.innerHTML = ''; defectMap = [];
+            
+            const totalLines = linesData.length; let totalDefects = 0;
+            if(totalLines === 0) return; 
+
+            linesData.forEach((line, lineIdx) => {
+                const slideWidth = 100 / totalLines;
+                const lineImgSrc = (line.lineImg && line.lineImg.trim() !== "") ? line.lineImg : `https://placehold.co/400x300/eef2f6/2c3e50?text=Sản+Phẩm+${line.name}`;
+                
+                // RENDER OEE SLIDE
+                oeeTrack.innerHTML += `
+                    <div class="oee-slide" style="width: ${slideWidth}%">
+                        <div class="line-title">Hiệu suất Line: ${line.name}</div>
+                        <div class="oee-content-wrapper">
+                            <div class="oee-image-box"><div class="oee-image-title">Sản phẩm</div><img src="${lineImgSrc}" alt="${line.name}"></div>
+                            <div class="oee-charts-container">
+                                <div class="oee-card" id="opRatioChart_${lineIdx}"></div>
+                                <div class="oee-card" id="oeeChart_${lineIdx}"></div>
+                                <div class="oee-card" id="availabilityChart_${lineIdx}"></div>
+                                <div class="oee-card" id="performanceChart_${lineIdx}"></div>
+                                <div class="oee-card" id="qualityChart_${lineIdx}"></div>
+                            </div>
+                        </div>
+                    </div>`;
+
+                // RENDER COLOR BAND SLIDE (ĐỒNG BỘ THEO LINE)
+                colorBandTrack.innerHTML += `
+                    <div class="band-slide" style="width: ${slideWidth}%">
+                        <div class="band-title">M/C Status: ${line.name}</div>
+                        <div class="band-chart-area" id="bandChart_${lineIdx}"></div>
+                    </div>`;
+
+                line.defects.forEach(() => { defectMap.push(lineIdx); totalDefects++; });
+            });
+
+            const safeTotalDefects = totalDefects === 0 ? 1 : totalDefects;
+            oeeTrack.style.width = `${totalLines * 100}%`;
+            colorBandTrack.style.width = `${totalLines * 100}%`;
+            defectTrack.style.width = `${safeTotalDefects * 100}%`;
+
+            linesData.forEach((line, lineIdx) => {
+                line.defects.forEach((defect, defectIdx) => {
+                    const defectSlideWidth = 100 / safeTotalDefects;
+                    const cId = `${lineIdx}_${defectIdx}`; 
+                    const defectImgSrc = (defect.img && defect.img.trim() !== "") ? defect.img : `https://placehold.co/400x300/eef2f6/2c3e50?text=Chưa+Có+Ảnh`;
+
+                    defectTrack.innerHTML += `
+                        <div class="slide" style="width: ${defectSlideWidth}%">
+                            <div class="slide-header"><span class="line-badge">${line.name}</span> Lỗi: ${defect.name}</div>
+                            <div class="slide-content">
+                                <div class="top-row">
+                                    <div class="defect-image-box"><div class="defect-image-title">Minh Họa Lỗi</div><img src="${defectImgSrc}" alt="${defect.name}"></div>
+                                    <div class="chart-box chart-box-main"><div class="chart-core" id="chart-month-${cId}"></div></div>
+                                </div>
+                                <div class="bottom-row">
+                                    <div class="chart-box chart-box-sub"><div class="chart-core" id="chart-day-${cId}"></div></div>
+                                    <div class="chart-box chart-box-hour"><div class="chart-core" id="chart-hour-${cId}"></div></div>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+            });
+
+            setTimeout(() => {
+                linesData.forEach((line, lineIdx) => {
+                    let cOee = line.oeeColor, cAvail = '#00b050', cPerf = line.oeeColor, cQual = '#00b050';
+                    
+                    if (line.name === "DFAB-R") {
+                        cOee = line.stats[1] >= 85.27 ? '#00b050' : '#f39c12';
+                        cAvail = line.stats[2] >= 90.00 ? '#00b050' : '#f39c12';
+                        cPerf = line.stats[3] >= 95.00 ? '#00b050' : '#f39c12';
+                        cQual = line.stats[4] >= 99.73 ? '#00b050' : '#f39c12';
+                    } else if (line.name === "DFAB-P") {
+                        cOee = line.stats[1] >= 85.28 ? '#00b050' : '#f39c12';
+                        cAvail = line.stats[2] >= 90.00 ? '#00b050' : '#f39c12';
+                        cPerf = line.stats[3] >= 95.00 ? '#00b050' : '#f39c12';
+                        cQual = line.stats[4] >= 99.74 ? '#00b050' : '#f39c12';
+                    }
+
+                    activeCharts[`opRatio_${lineIdx}`] = new ApexCharts(document.querySelector(`#opRatioChart_${lineIdx}`), createRadialOptions('OP Ratio', line.stats[0], '#d32f2f')); activeCharts[`opRatio_${lineIdx}`].render();
+                    activeCharts[`oee_${lineIdx}`] = new ApexCharts(document.querySelector(`#oeeChart_${lineIdx}`), createRadialOptions('OEE', line.stats[1], cOee)); activeCharts[`oee_${lineIdx}`].render();
+                    new ApexCharts(document.querySelector(`#availabilityChart_${lineIdx}`), createRadialOptions('Availability', line.stats[2], cAvail)).render();
+                    new ApexCharts(document.querySelector(`#performanceChart_${lineIdx}`), createRadialOptions('Performance', line.stats[3], cPerf)).render();
+                    new ApexCharts(document.querySelector(`#qualityChart_${lineIdx}`), createRadialOptions('Quality', line.stats[4], cQual)).render();
+
+                    line.defects.forEach((defect, defectIdx) => {
+                        const cId = `${lineIdx}_${defectIdx}`;
+                        activeCharts[`month_${cId}`] = new ApexCharts(document.querySelector(`#chart-month-${cId}`), createComboChart('Tháng', defect.dataM, line.prodM, months, defect.color));
+                        activeCharts[`month_${cId}`].render();
+                        
+                        activeCharts[`day_${cId}`] = new ApexCharts(document.querySelector(`#chart-day-${cId}`), createDailyComboChart('Ngày', defect.dataD_Day, defect.dataD_Night, line.prodD, last10Days, defect.color));
+                        activeCharts[`day_${cId}`].render();
+                        
+                        activeCharts[`hour_${cId}`] = new ApexCharts(document.querySelector(`#chart-hour-${cId}`), createComboChart('Giờ', defect.dataH, line.prodH, hours, defect.color));
+                        activeCharts[`hour_${cId}`].render();
+                    });
+                });
+                initColorBands();
+            }, 100);
+
+            if(sliderInterval) clearInterval(sliderInterval);
+            let currentDefectSlide = 0;
+            sliderInterval = setInterval(() => {
+                if(totalDefects === 0) return;
+                currentDefectSlide++;
+                if (currentDefectSlide >= totalDefects) currentDefectSlide = 0;
+                
+                defectTrack.style.transform = `translateX(${-(currentDefectSlide * (100 / safeTotalDefects))}%)`;
+                
+                const currentLineIdx = defectMap[currentDefectSlide];
+                oeeTrack.style.transform = `translateX(${-(currentLineIdx * (100 / totalLines))}%)`;
+                colorBandTrack.style.transform = `translateX(${-(currentLineIdx * (100 / totalLines))}%)`;
+            }, 6000); 
+
+            populateDropdowns();
+        }
+
+        // HÀM VẼ DẢI MÀU GỌN GÀNG HƠN & HIỂN THỊ TOOLTIP KHI HOVER
+        function initColorBands() {
+            const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+            const endOfDay = new Date(); endOfDay.setHours(24, 0, 0, 0);
+
+            linesData.forEach((line, lineIdx) => {
+                let seriesData = [];
+                const mData = timelineData[line.name] || [];
+                
+                mData.forEach(segment => {
+                    if (segment.end > startOfDay.getTime()) {
+                        let startTime = segment.start < startOfDay.getTime() ? startOfDay.getTime() : segment.start;
+                        seriesData.push({
+                            x: 'Status',
+                            y: [startTime, segment.end],
+                            fillColor: STATUS_COLORS[segment.state] || STATUS_COLORS["NOPLAN"],
+                            stateName: segment.state // Truyền trạng thái vào data để Tooltip đọc
+                        });
+                    }
+                });
+
+                var options = {
+                    series: [{ data: seriesData }],
+                    chart: { type: 'rangeBar', height: '100%', parentHeightOffset: 0, toolbar: { show: false }, animations: { enabled: false }, sparkline: { enabled: false } },
+                    plotOptions: { bar: { horizontal: true, barHeight: '80%', rangeBarGroupRows: true } }, 
+                    xaxis: { 
+                        type: 'datetime', 
+                        min: startOfDay.getTime(), 
+                        max: endOfDay.getTime(),   
+                        tickAmount: 12,            
+                        labels: { show: true, style: { colors: '#aaa', fontSize: '10px' }, datetimeUTC: false, format: 'HH:mm', offsetY: -5 }, 
+                        axisBorder: { show: false }, axisTicks: { show: false } 
+                    },
+                    yaxis: { show: false, labels: { show: false } },
+                    grid: { show: true, padding: { top: -10, right: 15, bottom: -10, left: 15 },
+                            xaxis: { lines: { show: true } },
+                            yaxis: { lines: { show: false } }
+                    }, 
+                    // TẠO TOOLTIP THÔNG MINH HIỂN THỊ TRẠNG THÁI VÀ GIỜ
+                    tooltip: { 
+                        custom: function({series, seriesIndex, dataPointIndex, w}) {
+                            var data = w.globals.initialSeries[seriesIndex].data[dataPointIndex];
+                            var start = new Date(data.y[0]).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                            var end = new Date(data.y[1]).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+                            return '<div style="padding: 8px; background: #222; border: 1px solid #444; border-left: 5px solid ' + data.fillColor + '; color: #fff; font-size: 12px; font-family: sans-serif; border-radius: 4px;">' +
+                                '<strong style="font-size: 14px; text-transform: uppercase;">' + data.stateName + '</strong><br/>' +
+                                '<span style="color: #aaa;">' + start + ' - ' + end + '</span>' +
+                                '</div>';
+                        }
+                    }
+                };
+
+                if(bandCharts[lineIdx]) bandCharts[lineIdx].destroy();
+                bandCharts[lineIdx] = new ApexCharts(document.querySelector(`#bandChart_${lineIdx}`), options);
+                bandCharts[lineIdx].render();
+            });
+        }
+
+        function updateColorBandLogic(machineName, currentState) {
+            const now = new Date().getTime();
+            if (!timelineData[machineName]) timelineData[machineName] = [];
+            
+            let mData = timelineData[machineName];
+            const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+            
+            timelineData[machineName] = mData.filter(seg => seg.end > startOfDay.getTime());
+            mData = timelineData[machineName];
+
+            if (mData.length === 0) {
+                mData.push({ state: currentState, start: now, end: now + 60000 }); 
+            } else {
+                let lastSegment = mData[mData.length - 1];
+                if (lastSegment.state === currentState) {
+                    lastSegment.end = now + 60000; 
+                } else {
+                    lastSegment.end = now;         
+                    mData.push({ state: currentState, start: now, end: now + 60000 });
+                }
+            }
+            localStorage.setItem('dashboardColorBandData', JSON.stringify(timelineData));
+            // (timeline band chỉ lưu local — không cần đồng bộ Sheets)
+        }
+
+        // ==========================================
+        // NHẬP NHANH NGÀY HÔM NAY — rolling window 10 ngày
+        // ==========================================
+
+        function populateQuickLine() {
+            const sel = document.getElementById('quickLine');
+            if (!sel) return;
+            sel.innerHTML = linesData.map((l, i) => `<option value="${i}">${l.name}</option>`).join('');
+            loadQuickDefects();
+        }
+
+        function loadQuickDefects() {
+            const lineId = parseInt(document.getElementById('quickLine').value);
+            const line = linesData[lineId];
+            const sel = document.getElementById('quickMetric');
+            if (!line || !sel) return;
+
+            // Option: Sản lượng + từng lỗi
+            const options = [
+                `<option value="prod">📦 Sản Lượng (prodD)</option>`,
+                ...line.defects.map((d, i) => `<option value="${i}">🔴 ${d.name}</option>`)
+            ];
+            sel.innerHTML = options.join('');
+            updateQuickLabels();
+        }
+
+        function updateQuickLabels() {
+            const metricVal = document.getElementById('quickMetric').value;
+            const dayLabel  = document.getElementById('quickDayLabel');
+            const nightGrp  = document.getElementById('quickNightGroup');
+            const preview   = document.getElementById('quickPreview');
+
+            if (metricVal === 'prod') {
+                // Sản lượng: chỉ có Ca Ngày (tổng), ẩn Ca Đêm
+                if (dayLabel)  dayLabel.textContent = 'Sản lượng hôm nay';
+                if (nightGrp)  nightGrp.style.display = 'none';
+            } else {
+                // Lỗi: hiện cả Ca Ngày + Ca Đêm
+                if (dayLabel)  dayLabel.textContent = 'Số lỗi hôm nay (Ca Ngày)';
+                if (nightGrp)  nightGrp.style.display = 'block';
+            }
+
+            // Preview mảng hiện tại
+            const lineId   = parseInt(document.getElementById('quickLine').value);
+            const line     = linesData[lineId];
+            if (!line || !preview) return;
+
+            let arr;
+            if (metricVal === 'prod') {
+                arr = line.prodD;
+            } else {
+                const d = line.defects[parseInt(metricVal)];
+                arr = d ? d.dataD_Day : [];
+            }
+            if (arr && arr.length) {
+                preview.textContent = `Hiện tại: [${arr.join(', ')}]  →  ngày mới sẽ thay thế "${arr[0]}"`;
+            }
+        }
+
+        function pushTodayData() {
+            const lineId    = parseInt(document.getElementById('quickLine').value);
+            const metricVal = document.getElementById('quickMetric').value;
+            const dayVal    = parseFloat(document.getElementById('quickDayVal').value)   || 0;
+            const nightVal  = parseFloat(document.getElementById('quickNightVal').value) || 0;
+            const line      = linesData[lineId];
+            if (!line) return;
+
+            // Chỉ ghi đè vào index cuối (hôm nay), KHÔNG shift mảng
+            // autoRollDays đã xử lý việc lệch ngày rồi
+            function writeToday(arr, val) {
+                const next = [...arr];
+                next[next.length - 1] = val;  // ghi đè ngày hôm nay (index cuối)
+                return next;
+            }
+
+            if (metricVal === 'prod') {
+                line.prodD = writeToday(line.prodD, dayVal);
+            } else {
+                const defect = line.defects[parseInt(metricVal)];
+                if (!defect) return;
+                defect.dataD_Day   = writeToday(defect.dataD_Day,   dayVal);
+                defect.dataD_Night = writeToday(defect.dataD_Night, nightVal);
+            }
+
+            // Xóa ô nhập
+            document.getElementById('quickDayVal').value   = '';
+            document.getElementById('quickNightVal').value = '';
+
+            // Cập nhật preview ngay
+            updateQuickLabels();
+
+            // Lưu + đồng bộ
+            saveStateAndReload('✅ Đã đẩy dữ liệu hôm nay vào!');
+        }
+
+        // ==========================================
+        // SỬA TỪNG NGÀY CỤ THỂ — bảng lưới 10 ngày
+        // ==========================================
+
+        function populateEditLine() {
+            const sel = document.getElementById('editLine');
+            if (!sel) return;
+            sel.innerHTML = linesData.map((l, i) => `<option value="${i}">${l.name}</option>`).join('');
+            loadEditDefects();
+        }
+
+        function loadEditDefects() {
+            const lineId = parseInt(document.getElementById('editLine').value);
+            const line   = linesData[lineId];
+            const sel    = document.getElementById('editMetric');
+            if (!line || !sel) return;
+            sel.innerHTML = [
+                `<option value="prod">📦 Sản Lượng</option>`,
+                ...line.defects.map((d, i) => `<option value="${i}">🔴 ${d.name}</option>`)
+            ].join('');
+            renderEditGrid();
+        }
+
+        function renderEditGrid() {
+            const lineId    = parseInt(document.getElementById('editLine').value);
+            const metricVal = document.getElementById('editMetric').value;
+            const line      = linesData[lineId];
+            const grid      = document.getElementById('editDayGrid');
+            if (!line || !grid) return;
+
+            const isProd = metricVal === 'prod';
+            const defect = isProd ? null : line.defects[parseInt(metricVal)];
+            const arrDay   = isProd ? line.prodD        : (defect ? defect.dataD_Day   : []);
+            const arrNight = isProd ? null               : (defect ? defect.dataD_Night : []);
+
+            // Nhãn ngày: index 0 = 9 ngày trước, index 9 = hôm nay
+            const labels = last10Days; // đã có sẵn
+
+            // Build bảng
+            let html = `<table style="width:100%; border-collapse:collapse; font-size:13px;">`;
+
+            // Header hàng ngày
+            html += `<tr>`;
+            html += `<td style="padding:6px 8px; color:#9aa4bf; font-weight:600; white-space:nowrap;">${isProd ? 'Sản lượng' : 'Ca Ngày'}</td>`;
+            labels.forEach((lbl, i) => {
+                const isToday = i === 9;
+                html += `<td style="text-align:center; padding:4px 2px;">
+                    <div style="font-size:10px; color:${isToday ? '#10b981' : '#9aa4bf'}; font-weight:${isToday ? '700' : '400'}; margin-bottom:3px;">${lbl}${isToday ? '<br>▼' : ''}</div>
+                    <input type="number" id="eg_day_${i}" value="${arrDay[i] ?? 0}" min="0"
+                        style="width:58px; text-align:center; padding:5px 3px; font-size:13px; font-weight:600;
+                               border-radius:6px; border:1px solid ${isToday ? 'rgba(16,185,129,0.6)' : 'var(--border)'};
+                               background:${isToday ? 'rgba(16,185,129,0.08)' : 'var(--input-bg, rgba(255,255,255,0.05))'};
+                               color:${isToday ? '#10b981' : 'inherit'};">
+                </td>`;
+            });
+            html += `</tr>`;
+
+            // Hàng Ca Đêm (chỉ hiện khi là Lỗi)
+            if (!isProd && arrNight) {
+                html += `<tr>`;
+                html += `<td style="padding:6px 8px; color:#9aa4bf; font-weight:600; white-space:nowrap;">Ca Đêm</td>`;
+                labels.forEach((lbl, i) => {
+                    const isToday = i === 9;
+                    html += `<td style="text-align:center; padding:4px 2px;">
+                        <input type="number" id="eg_night_${i}" value="${arrNight[i] ?? 0}" min="0"
+                            style="width:58px; text-align:center; padding:5px 3px; font-size:13px; font-weight:600;
+                                   border-radius:6px; border:1px solid ${isToday ? 'rgba(129,140,248,0.6)' : 'var(--border)'};
+                                   background:${isToday ? 'rgba(129,140,248,0.08)' : 'var(--input-bg, rgba(255,255,255,0.05))'};
+                                   color:${isToday ? '#818cf8' : 'inherit'};">
+                    </td>`;
+                });
+                html += `</tr>`;
+            }
+
+            html += `</table>`;
+            grid.innerHTML = html;
+        }
+
+        function saveEditGrid() {
+            const lineId    = parseInt(document.getElementById('editLine').value);
+            const metricVal = document.getElementById('editMetric').value;
+            const line      = linesData[lineId];
+            if (!line) return;
+
+            const isProd = metricVal === 'prod';
+            const defect = isProd ? null : line.defects[parseInt(metricVal)];
+
+            const newDay   = Array.from({length: 10}, (_, i) => parseFloat(document.getElementById(`eg_day_${i}`)?.value)   || 0);
+            const newNight = isProd ? null : Array.from({length: 10}, (_, i) => parseFloat(document.getElementById(`eg_night_${i}`)?.value) || 0);
+
+            if (isProd) {
+                line.prodD = newDay;
+            } else if (defect) {
+                defect.dataD_Day   = newDay;
+                defect.dataD_Night = newNight;
+            }
+
+            saveStateAndReload('✅ Đã lưu chỉnh sửa ngày!');
+        }
+
+        // Hook vào openModal (cập nhật thêm editLine)
+
+        async function initDashboard() {
+            const statusEl = document.getElementById('cloudStatus');
+            statusEl.textContent = '🔄 Đang tải...';
+            statusEl.style.color = '#f59e0b';
+
+            // 1. Thử đọc cấu hình từ Google Sheets (cột H)
+            let sheetData = null;
+            if (webAppUrl.trim()) {
+                sheetData = await sheetReadConfig();
+            }
+
+            if (sheetData && Array.isArray(sheetData) && sheetData.length > 0) {
+                linesData = normalizeLinesData(sheetData);
+                linesData = autoRollDays(linesData); // tự động rollPush nếu sang ngày mới
+                localStorage.setItem('dashboardProdDataDynamic', JSON.stringify(linesData)); // cache local
+                statusEl.textContent = '📊 Google Sheets';
+                statusEl.style.color = '#10b981';
+            } else {
+                // 2. Fallback: localStorage cache
+                const local = JSON.parse(localStorage.getItem('dashboardProdDataDynamic'));
+                if (local && Array.isArray(local) && local.length > 0) {
+                    linesData = normalizeLinesData(local);
+                    linesData = autoRollDays(linesData); // tự động rollPush nếu sang ngày mới
+                    statusEl.textContent = '💾 Cache Local';
+                    statusEl.style.color = '#f59e0b';
+                } else {
+                    // 3. Fallback: dữ liệu mặc định
+                    linesData = normalizeLinesData(JSON.parse(JSON.stringify(defaultLinesData)));
+                    linesData = autoRollDays(linesData); // tự động rollPush nếu sang ngày mới
+                    statusEl.textContent = '📋 Mặc định';
+                    statusEl.style.color = '#9aa4bf';
+                }
+            }
+
+            timelineData = JSON.parse(localStorage.getItem('dashboardColorBandData')) || {};
+
+            renderDashboard();
+        }
+
+        // ==========================================
+        // CÁC HÀM QUẢN LÝ (KHÔNG VIẾT TẮT)
+        // ==========================================
+        function openModal() { 
+            document.getElementById('dataModal').style.display = 'flex'; 
+            populateDropdowns(); 
+            populateQuickLine();
+            populateEditLine();
+            // Wire onchange cho quickMetric
+            const qm = document.getElementById('quickMetric');
+            if (qm) { qm.onchange = updateQuickLabels; }
+        }
+        function closeModal() { document.getElementById('dataModal').style.display = 'none'; }
+        
+        function populateDropdowns() {
+            const selLine = document.getElementById('selLine'); 
+            const selLineAdd = document.getElementById('selLineAddDefect');
+            selLine.innerHTML = ''; selLineAdd.innerHTML = '';
+            linesData.forEach((line, idx) => { 
+                selLine.innerHTML += `<option value="${idx}">${line.name}</option>`; 
+                selLineAdd.innerHTML += `<option value="${idx}">${line.name}</option>`; 
+            });
+            updateMetricDropdown();
+        }
+        
+        function updateMetricDropdown() {
+            const selMetric = document.getElementById('selMetric'); 
+            const lineId = document.getElementById('selLine').value; 
+            if(!lineId && lineId !== '0') return;
+            selMetric.innerHTML = `<option value="oee" style="font-weight: bold; color: #00b050;">Cụm OP Ratio, OEE & Ảnh</option><option value="prod" style="font-weight: bold; color: #2c3e50;">Sản lượng Sản xuất</option>`;
+            linesData[lineId].defects.forEach((defect, idx) => { selMetric.innerHTML += `<option value="${idx}">Lỗi: ${defect.name}</option>`; });
+            loadInputValues();
+        }
+        
+        function loadInputValues() {
+            const lineId = document.getElementById('selLine').value; const metric = document.getElementById('selMetric').value; if(!lineId && lineId !== '0') return;
+            const areaOEE = document.getElementById('inputAreaOEE'); const areaSeries = document.getElementById('inputAreaSeries');
+            const inputImageContainer = document.getElementById('inputImageContainer'); const lblImageTitle = document.getElementById('lblImageTitle');
+            const groupDayShift = document.getElementById('groupDayShift'); const groupNightShift = document.getElementById('groupNightShift');
+            document.getElementById('fileImgUpload').value = ""; 
+            if (metric === 'oee') {
+                areaOEE.style.display = 'block'; areaSeries.style.display = 'none'; inputImageContainer.style.display = 'block'; lblImageTitle.innerText = "Ảnh Sản Phẩm"; loadImgbbKey(); document.getElementById('imgUploadStatus').innerHTML=''; document.getElementById('imgPreviewBox').style.display='none';
+                document.getElementById('valImgUrl').value = linesData[lineId].lineImg || '';
+                document.getElementById('valOpRatio').value = linesData[lineId].stats[0]; document.getElementById('valOEE').value = linesData[lineId].stats[1]; document.getElementById('valAvail').value = linesData[lineId].stats[2]; document.getElementById('valPerf').value = linesData[lineId].stats[3]; document.getElementById('valQual').value = linesData[lineId].stats[4];
+            } else if (metric === 'prod') {
+                areaOEE.style.display = 'none'; areaSeries.style.display = 'block'; inputImageContainer.style.display = 'none'; groupDayShift.querySelector('label').innerText = "Dữ liệu 30 Ngày (Tổng SL)"; groupNightShift.style.display = 'none';
+                document.getElementById('valMonth').value = linesData[lineId].prodM.join(', '); document.getElementById('valDayShift').value = linesData[lineId].prodD.join(', '); document.getElementById('valHour').value = linesData[lineId].prodH.join(', ');
+            } else {
+                areaOEE.style.display = 'none'; areaSeries.style.display = 'block'; inputImageContainer.style.display = 'block'; lblImageTitle.innerText = "Ảnh Lỗi NG"; loadImgbbKey(); document.getElementById('imgUploadStatus').innerHTML=''; document.getElementById('imgPreviewBox').style.display='none';
+                groupDayShift.querySelector('label').innerText = "10 Ngày gần nhất (Ca Ngày)"; groupNightShift.style.display = 'block';
+                const dData = linesData[lineId].defects[metric]; document.getElementById('valImgUrl').value = dData.img || ''; document.getElementById('valMonth').value = dData.dataM.join(', '); document.getElementById('valDayShift').value = dData.dataD_Day.join(', '); document.getElementById('valNightShift').value = dData.dataD_Night.join(', '); document.getElementById('valHour').value = dData.dataH.join(', ');
+            }
+        }
+        
+        function loadImgbbKey() {
+            const el = document.getElementById('imgbbApiKey');
+            if (el) el.value = localStorage.getItem('imgbbApiKey') || '';
+        }
+        function previewImg(url) {
+            const box = document.getElementById('imgPreviewBox');
+            const img = document.getElementById('imgPreviewEl');
+            const msg = document.getElementById('imgPreviewMsg');
+            if (!url || !url.trim()) { if(box) box.style.display='none'; return; }
+            if (img) img.src = url;
+            if (box) box.style.display = 'block';
+            if (msg) msg.textContent = '🔗 Preview URL';
+        }
+        async function handleImageUpload(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const apiKey = (localStorage.getItem('imgbbApiKey') || '').trim();
+            const statusEl = document.getElementById('imgUploadStatus');
+            const previewBox = document.getElementById('imgPreviewBox');
+            if (!apiKey) {
+                statusEl.innerHTML = '<span style="color:#d32f2f;">⚠️ Chưa nhập API Key! Vào <a href="https://api.imgbb.com/" target="_blank">api.imgbb.com</a> lấy miễn phí.</span>';
+                return;
+            }
+            statusEl.innerHTML = '<span style="color:#1976d2;">⏳ Đang upload lên ImgBB...</span>';
+            if (previewBox) previewBox.style.display = 'none';
+            try {
+                const base64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
+                const fd = new FormData(); fd.append('key', apiKey); fd.append('image', base64); fd.append('name', file.name.replace(/\.[^.]+$/, ''));
+                const json = await (await fetch('https://api.imgbb.com/1/upload', { method:'POST', body:fd })).json();
+                if (json.success) {
+                    const url = json.data.display_url || json.data.url;
+                    document.getElementById('valImgUrl').value = url;
+                    statusEl.innerHTML = '<span style="color:#2e7d32;">✅ Upload thành công! Link đã điền tự động.</span>';
+                    document.getElementById('imgPreviewEl').src = url;
+                    document.getElementById('imgPreviewBox').style.display = 'block';
+                    document.getElementById('imgPreviewMsg').textContent = '✅ Ảnh đã upload lên ImgBB';
+                } else {
+                    statusEl.innerHTML = `<span style="color:#d32f2f;">❌ ImgBB lỗi: ${json.error?.message || 'Không xác định'}</span>`;
+                }
+            } catch(err) { statusEl.innerHTML = `<span style="color:#d32f2f;">❌ Lỗi: ${err.message}</span>`; }
+        }
+        function parseInputString(str, expLen) { let arr = str.split(/[\s,]+/).filter(v => v !== '').map(Number); while(arr.length < expLen) arr.push(0); return arr.slice(0, expLen); }
+        
+        function saveData() {
+            const lineId = document.getElementById('selLine').value; const metric = document.getElementById('selMetric').value; if(!lineId && lineId !== '0') return;
+            if (metric === 'oee') { linesData[lineId].lineImg = document.getElementById('valImgUrl').value.trim(); linesData[lineId].stats = [ parseFloat(document.getElementById('valOpRatio').value)||0, parseFloat(document.getElementById('valOEE').value)||0, parseFloat(document.getElementById('valAvail').value)||0, parseFloat(document.getElementById('valPerf').value)||0, parseFloat(document.getElementById('valQual').value)||0 ]; } 
+            else if (metric === 'prod') { linesData[lineId].prodM = parseInputString(document.getElementById('valMonth').value, 12); linesData[lineId].prodD = parseInputString(document.getElementById('valDayShift').value, 10); linesData[lineId].prodH = parseInputString(document.getElementById('valHour').value, 24); } 
+            else { linesData[lineId].defects[metric].img = document.getElementById('valImgUrl').value.trim(); linesData[lineId].defects[metric].dataM = parseInputString(document.getElementById('valMonth').value, 12); linesData[lineId].defects[metric].dataD_Day = parseInputString(document.getElementById('valDayShift').value, 10); linesData[lineId].defects[metric].dataD_Night = parseInputString(document.getElementById('valNightShift').value, 10); linesData[lineId].defects[metric].dataH = parseInputString(document.getElementById('valHour').value, 24); }
+            saveStateAndReload("Thành công!");
+        }
+
+        function addNewLine() {
+            const name = document.getElementById('newLineName').value.trim();
+            if(!name) { alert("Vui lòng nhập tên Line!"); return; }
+            linesData.push({
+                name: name, oeeColor: getRandomColor(), stats: [0, 90, 95, 90, 98], lineImg: "",
+                prodM: generateProdData(12, 3000), prodD: generateProdData(10, 100), prodH: generateProdData(24, 10),
+                defects: [{ name: "Lỗi mặc định", color: getRandomColor(), img: "", dataM: generateData(12, 5), dataD_Day: generateData(10, 5), dataD_Night: generateData(10, 5), dataH: generateData(24, 5) }]
+            });
+            saveStateAndReload(`Đã tạo mới Line: ${name}`);
+        }
+
+        function addNewDefect() {
+            const lineId = document.getElementById('selLineAddDefect').value;
+            const name = document.getElementById('newDefectName').value.trim();
+            if(!name || (!lineId && lineId !== '0')) { alert("Vui lòng nhập tên Lỗi!"); return; }
+            linesData[lineId].defects.push({
+                name: name, color: getRandomColor(), img: "", dataM: generateData(12, 5), dataD_Day: generateData(10, 5), dataD_Night: generateData(10, 5), dataH: generateData(24, 5)
+            });
+            saveStateAndReload(`Đã thêm Lỗi: ${name}`);
+        }
+
+        function deleteCurrentLine() {
+            const lineId = document.getElementById('selLine').value;
+            if(!lineId && lineId !== '0') return;
+            if (linesData.length <= 1) { alert("Phải có ít nhất 1 Line hoạt động. Không thể xóa!"); return; }
+            const lineName = linesData[lineId].name;
+            if (confirm(`Bạn chắc chắn muốn xóa Line [${lineName}]?`)) { linesData.splice(lineId, 1); saveStateAndReload(`Đã xóa Line: ${lineName}`); }
+        }
+
+        function deleteCurrentDefect() {
+            const lineId = document.getElementById('selLine').value;
+            const metric = document.getElementById('selMetric').value;
+            if(!lineId && lineId !== '0') return;
+            if (metric === 'oee' || metric === 'prod') { alert("Mục này không thể xóa!"); return; }
+            const defectName = linesData[lineId].defects[metric].name;
+            if (confirm(`Chắc chắn xóa lỗi [${defectName}] khỏi Line [${linesData[lineId].name}]?`)) { linesData[lineId].defects.splice(metric, 1); saveStateAndReload(`Đã xóa lỗi: ${defectName}`); }
+        }
+
+        async function resetAllData() {
+            if(confirm("Xóa tất cả cấu trúc (cả Google Sheets) và khôi phục về mặc định?")) {
+                localStorage.clear();
+                // Ghi mảng rỗng lên Sheets để reset
+                await sheetSaveConfig([]);
+                location.reload();
+            }
+        }
+        
+        function exportData() {
+            const dataStr = JSON.stringify(linesData);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Dashboard_Data_${new Date().toISOString().slice(0,10)}.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if(Array.isArray(importedData)) {
+                        localStorage.setItem('dashboardProdDataDynamic', JSON.stringify(importedData));
+                        const ok = await sheetSaveConfig(importedData);
+                        alert(ok ? "✅ Nhập & đồng bộ Google Sheets thành công!" : "✅ Nhập local OK (chưa kết nối Sheets).");
+                        location.reload();
+                    } else { alert("File cấu trúc không hợp lệ!"); }
+                } catch(err) { alert("Lỗi khi đọc file Backup!"); }
+            };
+            reader.readAsText(file);
+        }
+
+        async function saveStateAndReload(msg) {
+            localStorage.setItem('dashboardProdDataDynamic', JSON.stringify(linesData));
+            const statusEl = document.getElementById('cloudStatus');
+            statusEl.textContent = '⬆️ Đang lưu...';
+            const ok = await sheetSaveConfig(linesData);
+            if (ok) {
+                alert(msg + "\n📊 Đã đồng bộ lên Google Sheets!");
+            } else {
+                alert(msg + "\n⚠️ Lưu local OK nhưng chưa kết nối được Google Sheets.");
+            }
+            location.reload();
+        }
+
+        // ==========================================
+        // ĐỒNG BỘ TỪ GOOGLE SHEETS VÀ CẬP NHẬT BIỂU ĐỒ GIỜ
+        // ==========================================
+        // ============================================================
+        // VÒNG LẶP 1 — REAL-TIME (5 giây)
+        // Chỉ cập nhật: M/C Status timeline + OP Ratio
+        // Nhẹ, không parse JSON lớn, không renderDashboard
+        // ============================================================
+        function updateRealtimeStatus() {
+            if (!webAppUrl.trim()) return;
+            fetch(`${webAppUrl}?action=read&t=${Date.now()}`)
+            .then(res => res.json())
+            .then(data => {
+                const currentHour = new Date().getHours();
+
+                if (linesData[0]) {
+                    const rVal = parseFloat(String(data.r).replace(',', '.'));
+                    if (!isNaN(rVal)) {
+                        linesData[0].stats[0] = rVal;
+                        if (activeCharts['opRatio_0']) activeCharts['opRatio_0'].updateSeries([rVal]);
+                    }
+                    linesData[0].prodH[currentHour] = parseInt(data.prod_r) || 0;
+                    updateColorBandLogic(linesData[0].name, data.st_r);
+                }
+                if (linesData[1]) {
+                    const pVal = parseFloat(String(data.p).replace(',', '.'));
+                    if (!isNaN(pVal)) {
+                        linesData[1].stats[0] = pVal;
+                        if (activeCharts['opRatio_1']) activeCharts['opRatio_1'].updateSeries([pVal]);
+                    }
+                    linesData[1].prodH[currentHour] = parseInt(data.prod_p) || 0;
+                    updateColorBandLogic(linesData[1].name, data.st_p);
+                }
+
+                // Chỉ vẽ lại dải màu timeline — nhẹ, không đụng chart lớn
+                const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+                linesData.forEach((line, lineIdx) => {
+                    if (!bandCharts[lineIdx]) return;
+                    const seriesData = (timelineData[line.name] || [])
+                        .filter(seg => seg.end > startOfDay.getTime())
+                        .map(seg => ({
+                            x: 'Status',
+                            y: [Math.max(seg.start, startOfDay.getTime()), seg.end],
+                            fillColor: STATUS_COLORS[seg.state] || STATUS_COLORS["NOPLAN"],
+                            stateName: seg.state
+                        }));
+                    bandCharts[lineIdx].updateSeries([{ data: seriesData }]);
+                });
+            })
+            .catch(e => console.log("Realtime: chờ kết nối...", e));
+        }
+
+        // ============================================================
+        // VÒNG LẶP 2 — ĐỒNG BỘ DỮ LIỆU (60 giây)
+        // Chỉ parse full_config, chỉ renderDashboard khi có thay đổi thật sự
+        // Không chạy nếu không có dữ liệu mới → không đơ trình duyệt
+        // ============================================================
+        function syncConfigFromCloud() {
+            if (!webAppUrl.trim()) return;
+            fetch(`${webAppUrl}?action=read&t=${Date.now()}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.full_config || typeof data.full_config !== 'string') return;
+                if (!data.full_config.trim().startsWith('[')) return;
+                try {
+                    const sheetConfig = JSON.parse(data.full_config);
+                    if (!Array.isArray(sheetConfig) || sheetConfig.length === 0) return;
+
+                    const normalizedSheet = JSON.stringify(sheetConfig);
+                    let localParsed = null;
+                    try { localParsed = JSON.parse(localStorage.getItem('dashboardProdDataDynamic')); } catch(e) {}
+                    const normalizedLocal = localParsed ? JSON.stringify(localParsed) : null;
+
+                    // Chỉ render khi có thay đổi thật sự
+                    if (normalizedLocal === normalizedSheet) return;
+
+                    linesData = normalizeLinesData(sheetConfig);
+                    linesData = autoRollDays(linesData);
+                    localStorage.setItem('dashboardProdDataDynamic', JSON.stringify(linesData));
+                    const statusEl = document.getElementById('cloudStatus');
+                    if (statusEl) { statusEl.textContent = '📊 Sheets đã cập nhật'; statusEl.style.color = '#10b981'; }
+                    renderDashboard();
+                } catch(err) { console.warn('syncConfig lỗi:', err); }
+            })
+            .catch(e => console.log("Sync: chờ kết nối...", e));
+        }
+
+        // Realtime M/C Status: mỗi 30 giây (giảm từ 5s để tránh vượt quota Google)
+        setInterval(updateRealtimeStatus, 30000);
+        setTimeout(updateRealtimeStatus, 3000);
+
+        // Đồng bộ dữ liệu đầy đủ: mỗi 5 phút (giảm từ 60s để tránh vượt quota Google)
+        setInterval(syncConfigFromCloud, 300000);
+        setTimeout(syncConfigFromCloud, 8000);
+
+    
+        function toggleTheme(){
+            const b = document.body;
+            const isLight = b.classList.toggle('theme-light');
+            try{ localStorage.setItem('dashboardTheme', isLight ? 'light' : 'dark'); }catch(e){}
+            const icon = document.getElementById('themeIcon');
+            const label = document.getElementById('themeLabel');
+            if(icon) icon.textContent = isLight ? '🌙' : '☀️';
+            if(label) label.textContent = isLight ? 'Tối' : 'Sáng';
+        }
+        (function(){
+            try{
+                if(localStorage.getItem('dashboardTheme') === 'light'){
+                    document.body.classList.add('theme-light');
+                    const icon = document.getElementById('themeIcon');
+                    const label = document.getElementById('themeLabel');
+                    if(icon) icon.textContent = '🌙';
+                    if(label) label.textContent = 'Tối';
+                }
+            }catch(e){}
+        })();
+
+        async function manualSyncCloud() {
+            const btn = document.querySelector('button[onclick="manualSyncCloud()"]');
+            const statusEl = document.getElementById('cloudStatus');
+            if(btn) { btn.textContent = '⏳ Đang tải...'; btn.disabled = true; }
+            statusEl.textContent = '🔄 Đang tải từ Sheets...';
+            statusEl.style.color = '#f59e0b';
+            const sheetData = await sheetReadConfig();
+            if (sheetData && Array.isArray(sheetData) && sheetData.length > 0) {
+                localStorage.setItem('dashboardProdDataDynamic', JSON.stringify(sheetData));
+                alert('📊 Đồng bộ từ Google Sheets thành công! Dashboard sẽ tải lại.');
+                location.reload();
+            } else {
+                if(btn) { btn.textContent = '🔄 Đồng bộ'; btn.disabled = false; }
+                statusEl.textContent = '⚠️ Sheets trống';
+                statusEl.style.color = '#ef4444';
+                alert('⚠️ Google Sheets chưa có dữ liệu cấu hình (cột H trống).\nHãy nhấn "Lưu Dữ Liệu" từ máy chủ để ghi lên Sheets trước.');
+            }
+        }
+
+        // Khởi động chính — gọi async
+        initDashboard();
+
+    </script>
+</body>
+</html>
